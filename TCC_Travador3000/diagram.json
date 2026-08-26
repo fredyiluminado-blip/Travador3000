@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "author": "Travador3000 PoC",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled1",
+      "top": -54.46,
+      "left": -162.97,
+      "attrs": {
+        "i2cAddress": "0x3c"
+      }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": 259.4,
+      "left": 0,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "oled1:GND", "esp:GND.1", "black", [ "v-38.4", "h115.2", "v240" ] ],
+    [ "oled1:VCC", "esp:3V3", "red", [ "v-28.8", "h119.96" ] ],
+    [ "oled1:SCL", "esp:22", "green", [ "v-19.2", "h240.3", "v115.2" ] ],
+    [ "relay1:VCC", "esp:5V", "orange", [ "h-9.6", "v-76.8" ] ],
+    [ "relay1:GND", "esp:GND.2", "black", [ "h-19.2", "v-67.6", "h134.4", "v-192" ] ],
+    [ "relay1:IN", "esp:18", "green", [ "v28.6", "h134.4", "v-220.8" ] ],
+    [ "oled1:SDA", "esp:21", "violet", [ "v-9.6", "h220.87", "v134.4" ] ]
+  ],
+  "dependencies": {}
+}

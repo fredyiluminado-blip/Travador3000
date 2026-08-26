@@ -1,0 +1,16 @@
+# --- ARQUIVOS DE SEGURANÇA (NÃO ENVIAR PARA GITHUB) ---
+# Ignorar arquivo de configuração com senhas reais
+codigo_arduino/ViolaoSmart/config.h
+
+# --- ARQUIVOS DE COMPILAÇÃO ARDUINO (DESNECESSÁRIOS) ---
+# Ignorar pastas de compilação e binários
+codigo_arduino/*/build/
+codigo_arduino/*/bin/
+codigo_arduino/*/lib/
+
+# Ignorar arquivos temporários e de preferência do IDE
+*.sublime-project
+*.sublime-workspace
+.vscode/
+.DS_Store
+Thumbs.db

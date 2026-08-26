@@ -1,0 +1,22 @@
+{
+  "alunos": {
+    "233941": {
+      "nome": "Seu Nome Completo",
+      "serie": "3º IPI",
+      "pode_pegar": true
+    },
+    "EXEMPLO_ALUNO_NEGADO": {
+      "nome": "Aluno Teste Negado",
+      "serie": "2º IPI",
+      "pode_pegar": false
+    }
+  },
+  "violoes": {
+    "01": {
+      "status": "DISPONIVEL",
+      "aluno_matricula": "",
+      "aluno_nome": "",
+      "tempo_retirada": ""
+    }
+  }
+}
