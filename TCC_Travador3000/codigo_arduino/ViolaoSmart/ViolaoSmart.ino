@@ -94,13 +94,17 @@ void setupWiFi() {
 
 void setupFirebase() {
   atualizarTela("Firebase", "Conectando...", "");
-  config_fb.host = FIREBASE_HOST;
-  config_fb.api_key = FIREBASE_AUTH;
   
-  // Inicia a conexão
+  // 1. Informa o endereço do banco
+  config_fb.host = FIREBASE_HOST;
+  
+  // 2. Entrega o Segredo do Banco como "Token Legado" (Isso resolve o SSL e a Autenticação juntos!)
+  config_fb.signer.tokens.legacy_token = FIREBASE_AUTH;
+  
+  // 3. Inicia a conexão passando as "caixinhas" que a biblioteca moderna exige
   Firebase.begin(&config_fb, &auth);
-  Firebase.reconnectWiFi(true); // Garante reconexão automática
-  Serial.println("Firebase estruturado");
+  Firebase.reconnectWiFi(true); 
+  Serial.println("Firebase estruturado via Segredo (Modo Legacy)");
 }
 
 void setup() {
@@ -118,8 +122,8 @@ void setup() {
   setupWiFi();
   setupFirebase();
   
-  atualizarTela("  TRAVADOR V7  ", "DISPONIVEL", "Aproxime a carteirinha");
-  Serial.println("Sistema V7 Online e Trancado.");
+  atualizarTela("  TRAVADOR3000  ", "DISPONIVEL", "Aproxime a carteirinha");
+  Serial.println("Sistema 3000 Online e Trancado.");
 }
 
 void loop() {

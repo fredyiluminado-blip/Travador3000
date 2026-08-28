@@ -28,6 +28,8 @@
     }
   ],
   "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
     [ "oled1:GND", "esp:GND.1", "black", [ "v-38.4", "h115.2", "v240" ] ],
     [ "oled1:VCC", "esp:3V3", "red", [ "v-28.8", "h119.96" ] ],
     [ "oled1:SCL", "esp:22", "green", [ "v-19.2", "h240.3", "v115.2" ] ],

@@ -1,5 +1,4 @@
 [wokwi]
 version = 1
 firmware = 'codigo_arduino/ViolaoSmart/build/esp32.esp32.esp32doit-devkit-v1/ViolaoSmart.ino.bin'
-elf = 'codigo_arduino/ViolaoSmart/build/esp32.esp32.esp32doit-devkit-v1/ViolaoSmart.ino.elf'
 sim = 'esp32'
