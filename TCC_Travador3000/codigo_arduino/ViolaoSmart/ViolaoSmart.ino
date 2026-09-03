@@ -2,11 +2,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-
-// --- NOVA BIBLIOTECA PARA INTEGRAÇÃO ---
 #include <FirebaseESP32.h>
-
-// Inclui o arquivo de configuração local (NÃO enviado ao GitHub)
 #include "config.h"
 
 // --- CONFIGURAÇÕES DE HARDWARE ---
@@ -17,7 +13,6 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 #define PIN_RELE_SOLENOIDE 18
-// Ajuste HIGH/LOW se a trava inverter na simulação
 #define ABRIR_TRAVA HIGH   
 #define FECHAR_TRAVA LOW
 
@@ -29,10 +24,10 @@ enum EstadoSuporte {
 
 EstadoSuporte estadoAtual = DISPONIVEL;
 String alunoAtual = "";
+String turmaAtual = ""; // Nova variável para a turma
 String qrCodeAtual = "";
-String idViolao = "01"; // ID deste suporte
+String idViolao = "01"; 
 
-// --- NOVAS VARIÁVEIS PARA FIREBASE ---
 FirebaseData firebaseData;
 FirebaseAuth auth;
 FirebaseConfig config_fb;
@@ -53,161 +48,144 @@ void atualizarTela(String linha1, String linha2, String linha3 = "") {
   display.display();
 }
 
-// --- FUNÇÃO DE VALIDAÇÃO REAL NO FIREBASE ---
-bool validarAlunoFirebase(String qrCode, String &nomeAluno) {
+// --- FUNÇÃO DE VALIDAÇÃO COM TURMA ---
+bool validarAlunoFirebase(String qrCode, String &nomeAluno, String &turmaAluno) {
   atualizarTela("ACESSO", "Verificando...", "");
   Serial.print("Consultando Firebase para ID: ");
   Serial.println(qrCode);
   
-  // Caminho no JSON: /alunos/CÓDIGO_LIDO/nome
-  String path = "/alunos/" + qrCode + "/nome";
+  String pathNome = "/alunos/" + qrCode + "/nome";
+  String pathTurma = "/alunos/" + qrCode + "/turma";
 
-  // Faz a requisição GET ao Firebase
-  if (Firebase.getString(firebaseData, path)) {
+  // Busca o Nome
+  if (Firebase.getString(firebaseData, pathNome)) {
     nomeAluno = firebaseData.stringData();
     if (nomeAluno == "null" || nomeAluno == "") {
         Serial.println("ID nao encontrado no banco.");
         return false;
     }
-    Serial.println("Aluno validado: " + nomeAluno);
+    
+    // Busca a Turma (se não tiver turma cadastrada, deixa em branco para não travar)
+    if (Firebase.getString(firebaseData, pathTurma)) {
+      turmaAluno = firebaseData.stringData();
+      if (turmaAluno == "null") turmaAluno = "";
+    }
+    
+    Serial.println("Aluno validado: " + nomeAluno + " (" + turmaAluno + ")");
     return true;
   } else {
-    Serial.print("Erro de conexao. Firebase responde: ");
-    Serial.println(firebaseData.errorReason());
+    Serial.println("Erro de conexao com o Firebase.");
     return false; 
   }
 }
 
-// --- FUNÇÕES DE SETUP ---
+// --- SETUP ---
 void setupWiFi() {
   atualizarTela("Wi-Fi", "Conectando...", "");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Conectando ao Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
   }
-  Serial.println("");
-  Serial.print("Conectado! IP: ");
-  Serial.println(WiFi.localIP());
 }
 
 void setupFirebase() {
   atualizarTela("Firebase", "Conectando...", "");
-  
-  // 1. Informa o endereço do banco
   config_fb.host = FIREBASE_HOST;
-  
-  // 2. Entrega o Segredo do Banco como "Token Legado" (Isso resolve o SSL e a Autenticação juntos!)
   config_fb.signer.tokens.legacy_token = FIREBASE_AUTH;
-  
-  // 3. Inicia a conexão passando as "caixinhas" que a biblioteca moderna exige
   Firebase.begin(&config_fb, &auth);
   Firebase.reconnectWiFi(true); 
-  Serial.println("Firebase estruturado via Segredo (Modo Legacy)");
 }
 
 void setup() {
   Serial.begin(115200);
   
   pinMode(PIN_RELE_SOLENOIDE, OUTPUT);
-  digitalWrite(PIN_RELE_SOLENOIDE, FECHAR_TRAVA);
+  digitalWrite(PIN_RELE_SOLENOIDE, FECHAR_TRAVA); // Inicia trancado
   
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("Falha ao iniciar o OLED"));
     for(;;);
   }
   
-  // Executa os setups de conexão
   setupWiFi();
   setupFirebase();
   
   atualizarTela("  TRAVADOR3000  ", "DISPONIVEL", "Aproxime a carteirinha");
-  Serial.println("Sistema 3000 Online e Trancado.");
+  Serial.println("Sistema V7 Online e Trancado.");
 }
 
 void loop() {
-  // Simulação de leitura de QR Code via Terminal Serial
   if (Serial.available() > 0) {
     String leitura = Serial.readStringUntil('\n');
     leitura.trim();
-    
     if (leitura == "") return;
 
-    Serial.print("QR Code Lido via Serial: ");
-    Serial.println(leitura);
+    Serial.println("\n--- NOVA LEITURA: " + leitura + " ---");
 
     switch(estadoAtual) {
       
       case DISPONIVEL: {
-        String nomeAluno;
-        // Tenta validar o aluno NO FIREBASE REAL
-        if (validarAlunoFirebase(leitura, nomeAluno)) {
+        String nomeAluno, turmaAluno;
+        
+        if (validarAlunoFirebase(leitura, nomeAluno, turmaAluno)) {
           alunoAtual = nomeAluno;
+          turmaAtual = turmaAluno;
           qrCodeAtual = leitura;
-          
-          atualizarTela("ACESSO LIBERADO!", alunoAtual, "Retire o violao...");
-          
-          digitalWrite(PIN_RELE_SOLENOIDE, ABRIR_TRAVA); 
-          Serial.println("Solenoide Aberta para retirada.");
-          
-          // --- ATUALIZAÇÃO NO FIREBASE ---
-          String pathStatus = "/violoes/" + idViolao + "/status";
-          String pathAluno = "/violoes/" + idViolao + "/aluno_matricula";
-          
-          Firebase.setString(firebaseData, pathStatus, "EM_USO");
-          Firebase.setString(firebaseData, pathAluno, qrCodeAtual);
-          Serial.println("Firebase atualizado: Violao em uso.");
-          
-          delay(5000); // Tempo para simular a retirada
-          
-          digitalWrite(PIN_RELE_SOLENOIDE, FECHAR_TRAVA); 
-          Serial.println("Solenoide Trancada.");
-          
           estadoAtual = EM_USO;
-          atualizarTela(" VIOLAO RETIRADO ", "EM USO", "Com: " + alunoAtual);
+          
+          // LÓGICA NOVA: Abre a trava e MANTÉM ABERTA
+          digitalWrite(PIN_RELE_SOLENOIDE, ABRIR_TRAVA); 
+          Serial.println("-> Solenoide ABERTA (Permanecera assim ate a devolucao)");
+          
+          // Atualiza o Display com NOME e TURMA
+          String linha3 = turmaAtual != "" ? "Turma: " + turmaAtual : "Uso autorizado";
+          atualizarTela(" VIOLAO LIBERADO ", alunoAtual, linha3);
+          
+          // Atualiza Firebase 
+          Firebase.setString(firebaseData, "/violoes/" + idViolao + "/status", "EM_USO");
+          Firebase.setString(firebaseData, "/violoes/" + idViolao + "/aluno_matricula", qrCodeAtual);
+          Serial.println("-> Banco de dados: Status alterado para EM_USO.");
+          
         } else {
           atualizarTela("ERRO DE ACESSO", "INVALIDO", "Carteirinha nao cadastrada");
-          Serial.print("Display ERRO: INVALIDO: ");
-          Serial.println(leitura);
           delay(3000);
-          atualizarTela("  TRAVADOR V7  ", "DISPONIVEL", "Aproxime a carteirinha");
+          atualizarTela("  TRAVADOR3000  ", "DISPONIVEL", "Aproxime a carteirinha");
         }
         break;
       }
       
       case EM_USO: {
-        // Valida se o aluno que está devolvendo é o MESMO que pegou
+        // Aluno encosta a carteirinha para DEVOLVER e TRANCAR
         if (leitura == qrCodeAtual) {
-          atualizarTela("DEVOLUCAO ACEITA", alunoAtual, "Insira o violao...");
+          Serial.println("-> Validando devolucao...");
           
-          digitalWrite(PIN_RELE_SOLENOIDE, ABRIR_TRAVA); 
-          Serial.println("Solenoide Aberta para devolucao.");
-          
-          delay(5000); // Tempo para simular o encaixe
-          
+          // LÓGICA NOVA: Tranca a trava agora!
           digitalWrite(PIN_RELE_SOLENOIDE, FECHAR_TRAVA); 
-          Serial.println("Solenoide Trancada.");
+          Serial.println("-> Solenoide TRANCADA.");
           
-          // --- ATUALIZAÇÃO NO FIREBASE ---
-          String pathStatus = "/violoes/" + idViolao + "/status";
-          String pathAluno = "/violoes/" + idViolao + "/aluno_matricula";
-          
-          Firebase.setString(firebaseData, pathStatus, "DISPONIVEL");
-          Firebase.setString(firebaseData, pathAluno, "");
-          Serial.println("Firebase atualizado: Violao devolvido.");
+          // Atualiza Firebase CORRIGIDO
+          if(Firebase.setString(firebaseData, "/violoes/" + idViolao + "/status", "DISPONIVEL")) {
+             Serial.println("-> Banco de dados: Status alterado para DISPONIVEL.");
+          } else {
+             Serial.println("-> ERRO: Falha ao atualizar banco de dados!");
+          }
+          Firebase.setString(firebaseData, "/violoes/" + idViolao + "/aluno_matricula", "");
 
+          // Limpa a memória
           alunoAtual = "";
+          turmaAtual = "";
           qrCodeAtual = "";
           estadoAtual = DISPONIVEL;
           
-          atualizarTela("  TRAVADOR V7  ", "DISPONIVEL", "Aproxime a carteirinha");
+          atualizarTela("DEVOLUCAO ACEITA", "Sucesso!", "Obrigado.");
+          delay(3000);
+          atualizarTela("  TRAVADOR3000  ", "DISPONIVEL", "Aproxime a carteirinha");
+          
         } else {
           atualizarTela("ERRO DEVOLUCAO", "INCORRETO", "Use a mesma carteirinha!");
-          Serial.print("Display ERRO DEVOLUCAO: INCORRETO: ");
-          Serial.println(leitura);
           delay(3000);
-          atualizarTela(" VIOLAO RETIRADO ", "EM USO", "Com: " + alunoAtual);
+          // Volta a mostrar quem está com o violão e a turma
+          String linha3 = turmaAtual != "" ? "Turma: " + turmaAtual : "";
+          atualizarTela(" VIOLAO RETIRADO ", alunoAtual, linha3);
         }
         break;
       }
