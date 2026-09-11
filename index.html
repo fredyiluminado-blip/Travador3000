@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel ViolãoSmart</title>
+    <!-- Importa as bibliotecas do Firebase para a Web -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        .log-item { padding: 10px; border-bottom: 1px solid #ddd; font-size: 16px; }
+        .log-item:last-child { border-bottom: none; }
+        .retirada { color: #d9534f; font-weight: bold; }
+        .devolucao { color: #5cb85c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎸 Dashboard ViolãoSmart</h1>
+    <p>Monitoramento em tempo real do Suporte 01</p>
+    <div id="lista-historico">
+        <p>Carregando dados do Firebase...</p>
+    </div>
+</div>
+
+<script>
+    // 1. Aponta para o seu banco de dados (Como as regras estão 'true', não precisa de senha aqui)
+    const firebaseConfig = {
+        databaseURL: "https://violaoescola-default-rtdb.firebaseio.com"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 2. Cria a referência exata para a pasta do histórico
+    const historicoRef = db.ref('/historico/violoes/01');
+
+    // 3. Fica "escutando" as mudanças em tempo real
+    historicoRef.on('value', (snapshot) => {
+        const divLista = document.getElementById('lista-historico');
+        divLista.innerHTML = ''; // Limpa a tela para atualizar
+        
+        // Verifica se existe algum log
+        if (!snapshot.exists()) {
+            divLista.innerHTML = '<p>Nenhum registro encontrado.</p>';
+            return;
+        }
+
+        // Transforma os dados em uma lista e inverte para mostrar o mais recente no topo
+        let logs = [];
+        snapshot.forEach((child) => {
+            logs.push(child.val());
+        });
+        logs.reverse(); 
+
+        // Cria os elementos na tela usando lógica condicional simples
+        logs.forEach((textoLog) => {
+            const divItem = document.createElement('div');
+            divItem.className = 'log-item';
+            
+            // Destaca visualmente se é retirada ou devolução
+            if (textoLog.includes("RETIRADA")) {
+                divItem.innerHTML = `<span class="retirada">⬆️ RETIRADA:</span> ${textoLog.replace("RETIRADA - ", "")}`;
+            } else if (textoLog.includes("DEVOLUCAO")) {
+                divItem.innerHTML = `<span class="devolucao">⬇️ DEVOLUÇÃO:</span> ${textoLog.replace("DEVOLUCAO - ", "")}`;
+            } else {
+                divItem.innerText = textoLog;
+            }
+            
+            divLista.appendChild(divItem);
+        });
+    });
+</script>
+
+</body>
+</html>
